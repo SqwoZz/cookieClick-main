@@ -1,58 +1,18 @@
 'use client';
-import {
-  ADMIN_PASSWORD,
-  COOKIE_EMOJIS,
-  COOKIE_SIZES,
-  NAME_STORAGE_KEY,
-  costOf,
-  format,
-  formatRate,
-  MULTIPLIERS,
-  perClick,
-  perSecond,
-  plural,
-  totalUpgrades,
-  UPGRADES,
-  useClickerGame,
-  type GameState,
-} from "@/components/clicker-logic";
+import { NAME_STORAGE_KEY } from "@/components/clicker-logic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WelcomeGate } from "@/components/welcome-gate";
-import {
-  LoaderCircle,
-  LogIn,
-  User,
-} from "lucide-react";
+import { LoaderCircle, LogIn, User } from "lucide-react";
 import { useState, useEffect } from "react";
 
-// 🔊 Звук клика
-let audioContext: AudioContext | null = null;
-function playClickSound() {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!audioContext) audioContext = new AudioCtx();
-    if (audioContext.state === 'suspended') audioContext.resume();
-    const o = audioContext.createOscillator();
-    const g = audioContext.createGain();
-    o.connect(g); g.connect(audioContext.destination);
-    o.frequency.value = 600 + Math.random() * 300;
-    o.type = "sine";
-    g.gain.setValueAtTime(0.25, audioContext.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.08);
-    o.start(audioContext.currentTime);
-    o.stop(audioContext.currentTime + 0.08);
-  } catch {}
-}
-
-// 🔐 Конфиг
 const GIST_API = "/api/gist-sync";
 const SESSION_TOKEN_KEY = "game_session_token";
 
 type GistData = {
   users: Record<string, {
     passwordHash: string;
-    progress: Partial<GameState>;
+    progress: Record<string, unknown>;
     createdAt: number;
   }>;
 };
@@ -69,13 +29,12 @@ function setSessionToken(token: string | null) {
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + "your-secret-salt-here");
+  const data = encoder.encode(password + "cookie-clicker-secret-salt");
   const hash = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hash))
     .map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// 📋 Форма входа — без лишних уведомлений
 function LoginGate({ onSuccess }: { onSuccess: (username: string) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -96,9 +55,8 @@ function LoginGate({ onSuccess }: { onSuccess: (username: string) => void }) {
 
     setLoading(true);
     try {
-      // Читаем данные из гиста
       const res = await fetch(`${GIST_API}?action=read`);
-      if (!res.ok) throw new Error("Не удалось подключиться");
+      if (!res.ok) throw new Error("Не удалось подключиться к облаку");
       
       const data: GistData = await res.json();
       if (!data.users) data.users = {};
@@ -107,20 +65,16 @@ function LoginGate({ onSuccess }: { onSuccess: (username: string) => void }) {
       const passHash = await hashPassword(trimmedPass);
 
       if (userRecord) {
-        // Пользователь существует — проверяем пароль
         if (userRecord.passwordHash !== passHash) {
           throw new Error("Неверный пароль");
         }
-        // Вошли — без сообщений
       } else {
-        // Нет пользователя — создаём ТИХО, без уведомлений
         data.users[trimmedUser] = {
           passwordHash: passHash,
           progress: {},
           createdAt: Date.now()
         };
         
-        // Сохраняем в гист
         const saveRes = await fetch(GIST_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -129,7 +83,6 @@ function LoginGate({ onSuccess }: { onSuccess: (username: string) => void }) {
         if (!saveRes.ok) throw new Error("Не удалось создать аккаунт");
       }
 
-      // Создаём сессию и заходим
       const token = btoa(`${trimmedUser}:${Date.now()}`);
       setSessionToken(token);
       localStorage.setItem(NAME_STORAGE_KEY, trimmedUser);
@@ -192,7 +145,6 @@ function LoginGate({ onSuccess }: { onSuccess: (username: string) => void }) {
   );
 }
 
-// Основной компонент
 export default function GameShell() {
   const [user, setUser] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
