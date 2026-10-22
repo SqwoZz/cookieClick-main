@@ -241,7 +241,7 @@ export default function GameShell() {
             </Button>
           </div>
         </div>
-        <WelcomeGate />
+        <WelcomeGate onFinish={() => {}} />
       </div>
     </main>
   );
