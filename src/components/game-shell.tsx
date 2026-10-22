@@ -193,7 +193,9 @@ export default function GameShell() {
             </Button>
           </div>
         </div>
-        <WelcomeGate onFinish={() => {}} />
+        <WelcomeGate onFinish={() => {
+  console.log("Приветствие пройдено");
+}} />
       </div>
     </main>
   );
