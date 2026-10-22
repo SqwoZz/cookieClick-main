@@ -1,4 +1,4 @@
-import { GameShell } from "@/components/game-shell";
+import GameShell from "@/components/game-shell";
 
 export default function IndexPage() {
   return (
